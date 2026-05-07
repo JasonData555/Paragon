@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { BarChart2, Search, TrendingUp } from 'lucide-react';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   const stats = getDatasetStats();
