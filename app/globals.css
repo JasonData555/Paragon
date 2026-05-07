@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --paragon-sidebar:           #0F4A42;
+  --paragon-accent-primary:    #0F6E56;
+  --paragon-accent-hover:      #1D9E75;
+  --paragon-accent-light:      #5DCAA5;
+  --paragon-mint-chip:         #E1F5EE;
+  --paragon-surface-primary:   #F5F0E8;
+  --paragon-surface-card:      #FFFFFF;
+  --paragon-border:            #D3D1C7;
+  --paragon-border-dark:       #B4B2A9;
+  --paragon-text-primary:      #2C2C2A;
+  --paragon-text-secondary:    #5F5E5A;
+  --paragon-text-muted:        #888780;
+  --paragon-danger:            #DC2626;
+  --paragon-warning:           #F59E0B;
+  --paragon-success:           #059669;
+}
+
+html,
+body {
+  background-color: #F5F0E8;
+  color: #2C2C2A;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Section label utility */
+.label-caps {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--paragon-text-secondary);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Stat number utility */
+.stat-number {
+  font-size: 28px;
+  font-weight: 500;
+  color: var(--paragon-text-primary);
+  line-height: 1.2;
+}
+
+/* Card base */
+.card {
+  background-color: var(--paragon-surface-card);
+  border: 1px solid var(--paragon-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px 0 rgba(0,0,0,0.08), 0 1px 2px -1px rgba(0,0,0,0.06);
+  transition: transform 150ms ease;
+}
+
+.card:hover {
+  transform: scale(1.005);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--paragon-border-dark);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--paragon-text-muted);
+}
+
+/* Stagger delays for output section animations */
+.delay-75  { animation-delay:  75ms; }
+.delay-150 { animation-delay: 150ms; }
+.delay-225 { animation-delay: 225ms; }
+.delay-300 { animation-delay: 300ms; }
