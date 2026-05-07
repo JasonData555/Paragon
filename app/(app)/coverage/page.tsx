@@ -2,6 +2,7 @@ import { loadSurveyData, applyRecencyWeights } from '@/lib/data-loader';
 import { weightedEffectiveN } from '@/lib/recency-weights';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const SIZE_ORDER = ['Small', 'Mid-Market', 'Large', 'Enterprise'] as const;
 

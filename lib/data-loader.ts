@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import path from 'path';
 import type { SurveyRecord, WeightedRecord } from './types';
 import { calcAgeMonths, calcRecencyWeight } from './recency-weights';
@@ -15,14 +15,19 @@ export function loadSurveyData(): SurveyRecord[] {
   if (_cache) return _cache;
 
   const filePath = getSurveyPath();
-  const raw = readFileSync(filePath, 'utf-8');
-  const parsed = JSON.parse(raw) as SurveyRecord[];
-
-  if (!Array.isArray(parsed) || parsed.length === 0) {
-    throw new Error('survey.json is empty or malformed');
+  if (!existsSync(filePath)) {
+    _cache = [];
+    return _cache;
   }
 
-  _cache = parsed;
+  try {
+    const raw = readFileSync(filePath, 'utf-8');
+    const parsed = JSON.parse(raw) as SurveyRecord[];
+    _cache = Array.isArray(parsed) ? parsed : [];
+  } catch {
+    _cache = [];
+  }
+
   return _cache;
 }
 

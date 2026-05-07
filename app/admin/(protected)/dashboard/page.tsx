@@ -4,6 +4,7 @@ import { getAuditLog } from '@/lib/audit-logger';
 import { AlertTriangle, CheckCircle2, Database, Upload } from 'lucide-react';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 function fmt(n: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
