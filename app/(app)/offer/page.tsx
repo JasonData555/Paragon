@@ -9,6 +9,7 @@ export default function OfferPage() {
   const [result, setResult] = useState<QueryResult | null>(null);
   const [params, setParams] = useState<QueryParams | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isAutoUpdating, setIsAutoUpdating] = useState(false);
 
   return (
     <div
@@ -41,6 +42,7 @@ export default function OfferPage() {
           mode="offer"
           onResult={(r, p) => { setResult(r); setParams(p); }}
           onLoading={setLoading}
+          onAutoUpdating={setIsAutoUpdating}
           fssDistribution={result?.fss?.peer_distribution ?? undefined}
         />
       </div>
@@ -62,6 +64,7 @@ export default function OfferPage() {
           result={result}
           params={params}
           loading={loading}
+          isAutoUpdating={isAutoUpdating}
           mode="offer"
         />
       </div>

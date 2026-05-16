@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ComparisonBoxPlot } from './ComparisonBoxPlot';
-import type { CompBands, CandidatePosition, OperatingMode } from '@/lib/types';
+import type { CompBands, CandidatePosition, ConfidenceLevel, OperatingMode, PercentileBand } from '@/lib/types';
 
 interface CompDistributionCardProps {
   benchmark: CompBands;
@@ -11,6 +11,9 @@ interface CompDistributionCardProps {
   mode: OperatingMode;
   profileN: number;
   benchmarkN: number;
+  confidence?: ConfidenceLevel;
+  governanceLayer?: PercentileBand | null;
+  activeGovernanceCount?: number;
 }
 
 const METRICS = [
@@ -42,6 +45,9 @@ export function CompDistributionCard({
   mode,
   profileN,
   benchmarkN,
+  confidence,
+  governanceLayer,
+  activeGovernanceCount = 0,
 }: CompDistributionCardProps) {
   const [tableExpanded, setTableExpanded] = useState(false);
 
@@ -68,6 +74,9 @@ export function CompDistributionCard({
         profile={profile}
         candidate={candidate}
         mode={mode}
+        confidence={confidence}
+        governanceLayer={governanceLayer}
+        activeGovernanceCount={activeGovernanceCount}
       />
 
       {/* Details toggle */}

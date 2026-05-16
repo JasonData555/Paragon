@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Shield, AlertTriangle } from 'lucide-react';
-import type { GovernanceResult, OperatingMode } from '@/lib/types';
+import type { GovernanceCombinationResult, GovernanceResult, OperatingMode, ProtectionKey } from '@/lib/types';
 
 interface GovernanceDeltaPanelProps {
   governance: GovernanceResult;
   mode: OperatingMode;
+  governanceMatrix?: Record<string, GovernanceCombinationResult>;
+  rciScore?: number;
+  onGovernanceSelectionChange?: (selected: ProtectionKey[]) => void;
 }
 
 const ELEMENT_TOOLTIPS: Record<string, string> = {
@@ -19,6 +22,26 @@ const ELEMENT_TOOLTIPS: Record<string, string> = {
   has_do:
     'Directors and Officers insurance — personal liability coverage for decisions made in the role',
 };
+
+// Map element key (has_do, etc.) to ProtectionKey (do, etc.)
+const ELEMENT_TO_PROTECTION: Record<string, ProtectionKey> = {
+  has_do: 'do',
+  has_indemnification: 'indemnification',
+  has_severance: 'severance',
+  has_accel_vest: 'accel_vest',
+};
+
+// Short labels for combination pills
+const PROTECTION_ABBREV: Record<ProtectionKey, string> = {
+  do: 'D&O',
+  indemnification: 'Indem',
+  severance: 'Sev',
+  accel_vest: 'DT',
+};
+
+function matrixKey(protections: ProtectionKey[]): string {
+  return [...protections].sort().join('+');
+}
 
 function fmt(v: number): string {
   if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
@@ -71,15 +94,168 @@ function ToggleSwitch({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   );
 }
 
-export function GovernanceDeltaPanel({ governance, mode }: GovernanceDeltaPanelProps) {
+function useCountUp(target: number | null, duration = 300): number | null {
+  const [display, setDisplay] = useState<number | null>(target);
+  const prevRef = useRef<number | null>(target);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (target === null) { setDisplay(null); prevRef.current = null; return; }
+    const from = prevRef.current ?? target;
+    prevRef.current = target;
+    if (from === target) { setDisplay(target); return; }
+
+    const start = performance.now();
+    function tick(now: number) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(from + (target! - from) * eased));
+      if (progress < 1) rafRef.current = requestAnimationFrame(tick);
+      else setDisplay(target!);
+    }
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [target, duration]);
+
+  return display;
+}
+
+function CombinationPanel({
+  combination,
+  activeProtections,
+}: {
+  combination: GovernanceCombinationResult | null;
+  activeProtections: ProtectionKey[];
+}) {
+  const animWith    = useCountUp(combination?.median_tc_with    ?? null, 300);
+  const animWithout = useCountUp(combination?.median_tc_without ?? null, 300);
+  const animDelta   = useCountUp(combination?.delta             ?? null, 300);
+
+  return (
+    <div
+      style={{
+        background: '#FFFFFF',
+        border: '1.5px solid #0F6E56',
+        borderRadius: 12,
+        padding: '20px 24px',
+        marginTop: 12,
+      }}
+    >
+      {/* Header row */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <span className="label-caps" style={{ color: '#5F5E5A' }}>Selected Combination Analysis</span>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {activeProtections.map(k => (
+            <span
+              key={k}
+              style={{
+                backgroundColor: '#0F6E56',
+                color: '#FFFFFF',
+                fontSize: 10,
+                fontWeight: 600,
+                padding: '2px 8px',
+                borderRadius: 8,
+                letterSpacing: '0.04em',
+              }}
+            >
+              {PROTECTION_ABBREV[k]}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {!combination || combination.insufficient_data ? (
+        <p style={{ textAlign: 'center', fontSize: 13, color: '#888780', padding: '8px 0' }}>
+          Insufficient peer data for this exact combination
+          {combination ? ` (${combination.n_with} matching records)` : ''}.
+          Individual element premiums shown above remain valid.
+        </p>
+      ) : (
+        <>
+          {/* Three stat blocks */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 12 }}>
+            {/* WITH ALL */}
+            <div style={{ textAlign: 'center' }}>
+              <div className="label-caps" style={{ marginBottom: 6 }}>With All Selected</div>
+              <div className="font-mono" style={{ fontSize: 24, color: '#0F4A42', fontWeight: 500 }}>
+                {animWith !== null ? fmt(animWith) : '—'}
+              </div>
+              <div style={{ fontSize: 12, color: '#5F5E5A', marginTop: 4 }}>
+                median TC — <span className="font-mono">{combination.n_with}</span> peers
+              </div>
+            </div>
+
+            {/* WITHOUT ANY */}
+            <div style={{ textAlign: 'center' }}>
+              <div className="label-caps" style={{ marginBottom: 6 }}>Without Any</div>
+              <div className="font-mono" style={{ fontSize: 24, color: '#888780' }}>
+                {animWithout !== null ? fmt(animWithout) : '—'}
+              </div>
+              <div style={{ fontSize: 12, color: '#5F5E5A', marginTop: 4 }}>
+                median TC — <span className="font-mono">{combination.n_without}</span> peers
+              </div>
+            </div>
+
+            {/* COMBINATION PREMIUM */}
+            <div style={{ textAlign: 'center' }}>
+              <div className="label-caps" style={{ marginBottom: 6 }}>Combination Premium</div>
+              <div className="font-mono" style={{ fontSize: 24, color: '#0F6E56', fontWeight: 500 }}>
+                {animDelta !== null ? `+${fmt(animDelta)}` : '—'}
+              </div>
+              <div style={{ fontSize: 12, color: '#5F5E5A', marginTop: 4 }}>
+                observed market premium
+              </div>
+            </div>
+          </div>
+
+          {/* Explanatory line */}
+          <p style={{ fontSize: 12, color: '#5F5E5A', fontStyle: 'italic', textAlign: 'center' }}>
+            Based on <span className="font-mono">{combination.n_with}</span> peers with exactly this
+            protection profile vs <span className="font-mono">{combination.n_without}</span> peers with none
+            of these protections
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
+export function GovernanceDeltaPanel({
+  governance,
+  mode,
+  governanceMatrix = {},
+  rciScore,
+  onGovernanceSelectionChange,
+}: GovernanceDeltaPanelProps) {
   const [toggles, setToggles] = useState<Record<string, boolean>>({});
   const [hasInteracted, setHasInteracted] = useState(false);
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+  const [showCombination, setShowCombination] = useState(false);
 
   function handleToggle(key: string) {
-    setToggles(t => ({ ...t, [key]: !t[key] }));
+    setToggles(t => {
+      const next = { ...t, [key]: !t[key] };
+      const activeProtections = Object.entries(next)
+        .filter(([, on]) => on)
+        .map(([k]) => ELEMENT_TO_PROTECTION[k])
+        .filter(Boolean) as ProtectionKey[];
+      onGovernanceSelectionChange?.(activeProtections);
+      setShowCombination(activeProtections.length > 0);
+      return next;
+    });
     if (!hasInteracted) setHasInteracted(true);
   }
+
+  // Active protections for the combination panel
+  const activeProtections = Object.entries(toggles)
+    .filter(([, on]) => on)
+    .map(([k]) => ELEMENT_TO_PROTECTION[k])
+    .filter(Boolean) as ProtectionKey[];
+
+  const combinationResult = activeProtections.length > 0
+    ? (governanceMatrix[matrixKey(activeProtections)] ?? null)
+    : null;
 
   // Full quad: all four > 50%
   const elementsAbove50 = governance.elements.filter(e => e.prevalence_pct > 50);
@@ -87,7 +263,9 @@ export function GovernanceDeltaPanel({ governance, mode }: GovernanceDeltaPanelP
   const elementsBelow20 = governance.elements.filter(e => e.prevalence_pct < 20);
   const isZeroProtection = elementsBelow20.length === 4;
 
-  // Board access percentages
+  // Full Quad friction signal (RCI > 75)
+  const showFrictionSignal = typeof rciScore === 'number' && rciScore > 75;
+
   const totalBoardPct =
     governance.board_quarterly_pct + governance.board_regular_pct + governance.board_no_access_pct;
 
@@ -137,7 +315,6 @@ export function GovernanceDeltaPanel({ governance, mode }: GovernanceDeltaPanelP
                   <p className="text-xs text-paragon-text-secondary mt-0.5 ml-3">
                     <span className="font-mono">{Math.round(el.prevalence_pct)}%</span> of peers have this
                   </p>
-                  {/* Tooltip */}
                   {hoveredKey === el.key && tooltip && (
                     <div
                       className="absolute left-0 z-30 rounded pointer-events-none"
@@ -193,8 +370,37 @@ export function GovernanceDeltaPanel({ governance, mode }: GovernanceDeltaPanelP
         })}
       </div>
 
+      {/* Combination Result Panel */}
+      <div
+        style={{
+          overflow: 'hidden',
+          maxHeight: showCombination ? 300 : 0,
+          opacity: showCombination ? 1 : 0,
+          transition: 'max-height 200ms ease, opacity 150ms ease',
+        }}
+      >
+        <CombinationPanel combination={combinationResult} activeProtections={activeProtections} />
+      </div>
+
+      {/* High-friction Full Quad signal */}
+      {showFrictionSignal && (
+        <div
+          style={{
+            marginTop: 12,
+            padding: '8px 12px',
+            backgroundColor: '#E1F5EE',
+            border: '1px solid #1D9E75',
+            borderRadius: 8,
+            fontSize: 12,
+            color: '#0F4A42',
+          }}
+        >
+          Roles at this friction level show Full Quad protection at 2.5× the market rate.
+        </div>
+      )}
+
       {/* Secondary metrics */}
-      <div className="border-t border-paragon-border pt-4">
+      <div className="border-t border-paragon-border pt-4 mt-4">
         <div className="grid grid-cols-2 gap-6">
           {/* Signing Bonus */}
           <div>
