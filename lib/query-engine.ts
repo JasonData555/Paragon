@@ -11,15 +11,27 @@ import {
   RELAX_ORDER,
 } from './constants';
 import { calculateFSS, getFSSLabel, TIER1_FUNCTIONS, FLAGGED_NEUTRAL_FUNCTIONS } from './function-weights';
+import {
+  calcRCI,
+  calcPIS,
+  calcRecordFSS,
+  calcRecordRCI,
+  classifyQuadrant,
+  buildPISResult,
+  precomputeGovernanceMatrix,
+} from './pis-engine';
 import { generateStatement } from './statement-generator';
 import type {
   AppliedFilters,
   CompBands,
   ConfidenceLevel,
   FSSResult,
+  GovernanceCombinationResult,
   GovernanceElement,
   GovernanceResult,
   OrgStructureResult,
+  PeerPISPoint,
+  PISResult,
   PercentileBand,
   QueryParams,
   QueryResult,
@@ -395,6 +407,56 @@ export function executeQuery(params: QueryParams): QueryResult {
       ? calcFSS(filtered, params.selected_functions)
       : null;
 
+  // PIS — compute per-record FSS and RCI for peer scatter, then score current profile
+  let pis: PISResult | null = null;
+  {
+    const peerPoints: PeerPISPoint[] = filtered.map(r => ({
+      fss: calcRecordFSS(r),
+      rci: calcRecordRCI(r),
+    }));
+
+    const peerFSSScores = peerPoints.map(p => p.fss);
+    const peerRCIScores = peerPoints.map(p => p.rci);
+    const peerWeights  = filtered.map(r => r.recency_weight);
+
+    const peerFSSMedian = peerFSSScores.length > 0
+      ? weightedPercentile(peerFSSScores, peerWeights, 50) : 0;
+    const peerRCIMedian = peerRCIScores.length > 0
+      ? weightedPercentile(peerRCIScores, peerWeights, 50) : 0;
+
+    // Only compute current-role PIS when we have enough to position the dot
+    const hasFSS = (params.selected_functions ?? []).length > 0;
+    const hasRCI = !!(params.reporting_line || params.board_frequency || params.size_bucket || params.industry);
+
+    if (hasFSS || hasRCI) {
+      const roleFSS = hasFSS ? calculateFSS(params.selected_functions!) : 0;
+      const roleRCI = calcRCI(params.reporting_line, params.board_frequency, params.size_bucket, params.industry);
+      const rolePIS = calcPIS(roleFSS, roleRCI.rci_multiplier);
+      const quadrant = classifyQuadrant(roleFSS, roleRCI.rci_score, peerFSSMedian, peerRCIMedian);
+
+      // Percentile of current PIS in peer PIS distribution
+      const peerPISScores = peerPoints.map(p => calcPIS(p.fss, 0.5 + (p.rci / 100) * 1.5));
+      const totalW = peerWeights.reduce((s, w) => s + w, 0);
+      const belowW = peerPISScores.reduce((s, score, i) =>
+        s + (score < rolePIS ? peerWeights[i] : 0), 0);
+      const pisPercentile = totalW > 0 ? Math.round((belowW / totalW) * 100) : 50;
+
+      pis = buildPISResult(
+        roleFSS, roleRCI, rolePIS, quadrant,
+        peerFSSMedian, peerRCIMedian, pisPercentile, peerPoints,
+      );
+    } else if (peerPoints.length > 0) {
+      // No current-role params but we still want peer cloud for the chart
+      pis = buildPISResult(
+        0, calcRCI(null, null, null, null), 0, 'Generalist',
+        peerFSSMedian, peerRCIMedian, 0, peerPoints,
+      );
+    }
+  }
+
+  // Governance combination matrix (all 15 non-empty subsets)
+  const governance_matrix = precomputeGovernanceMatrix(filtered);
+
   // Candidate position (offer mode)
   const candidate = params.mode === 'offer' &&
     (params.candidate_base || params.candidate_bonus || params.candidate_equity)
@@ -448,6 +510,8 @@ export function executeQuery(params: QueryParams): QueryResult {
     governance,
     org_structure,
     fss,
+    pis,
+    governance_matrix,
     statement,
     candidate,
     filters_applied,

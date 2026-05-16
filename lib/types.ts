@@ -5,6 +5,8 @@ export type SizeBucket = 'Small' | 'Mid-Market' | 'Large' | 'Enterprise';
 export type ConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW' | 'INSUFFICIENT';
 export type FSSLabel = 'Narrow' | 'Standard' | 'Broad' | 'Expansive';
 export type OperatingMode = 'intake' | 'offer';
+export type QuadrantLabel = 'Paragon Leader' | 'Utility Player' | 'Specialist Surgeon' | 'Generalist';
+export type ProtectionKey = 'do' | 'indemnification' | 'severance' | 'accel_vest';
 
 export interface SurveyRecord {
   id: string;
@@ -47,6 +49,44 @@ export interface WeightedRecord extends SurveyRecord {
   recency_weight: number;
 }
 
+export interface RCIProfile {
+  reporting_pts: number;
+  board_pts: number;
+  size_pts: number;
+  industry_pts: number;
+  rci_raw: number;
+  rci_score: number;
+  rci_multiplier: number;
+}
+
+export interface PeerPISPoint {
+  fss: number;
+  rci: number;
+}
+
+export interface PISResult {
+  fss: number;
+  rci: RCIProfile;
+  pis: number;
+  quadrant: QuadrantLabel;
+  quadrant_peer_fss_median: number;
+  quadrant_peer_rci_median: number;
+  pis_percentile: number;
+  peer_points: PeerPISPoint[];
+}
+
+export interface GovernanceCombinationResult {
+  selected_protections: ProtectionKey[];
+  n_with: number;
+  n_without: number;
+  median_tc_with: number | null;
+  median_tc_without: number | null;
+  delta: number | null;
+  prevalence: number;
+  insufficient_data: boolean;
+  tc_distribution: PercentileBand | null;
+}
+
 export interface QueryParams {
   role_tier: RoleTier;
   industry?: string;
@@ -54,6 +94,8 @@ export interface QueryParams {
   size_bucket?: SizeBucket;
   metro_tier?: MetroTier | 'All';
   selected_functions?: string[];
+  reporting_line?: string;
+  board_frequency?: string;
   candidate_base?: number;
   candidate_bonus?: number;
   candidate_equity?: number;
@@ -174,6 +216,8 @@ export interface QueryResult {
   governance: GovernanceResult;
   org_structure: OrgStructureResult;
   fss: FSSResult | null;
+  pis: PISResult | null;
+  governance_matrix: Record<string, GovernanceCombinationResult>;
   statement: string;
   candidate: CandidatePosition | null;
   filters_applied: AppliedFilters;

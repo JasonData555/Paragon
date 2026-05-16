@@ -9,6 +9,7 @@ export default function IntakePage() {
   const [result, setResult] = useState<QueryResult | null>(null);
   const [params, setParams] = useState<QueryParams | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isAutoUpdating, setIsAutoUpdating] = useState(false);
 
   return (
     <div
@@ -41,6 +42,7 @@ export default function IntakePage() {
           mode="intake"
           onResult={(r, p) => { setResult(r); setParams(p); }}
           onLoading={setLoading}
+          onAutoUpdating={setIsAutoUpdating}
           fssDistribution={result?.fss?.peer_distribution ?? undefined}
         />
       </div>
@@ -62,6 +64,7 @@ export default function IntakePage() {
           result={result}
           params={params}
           loading={loading}
+          isAutoUpdating={isAutoUpdating}
           mode="intake"
         />
       </div>

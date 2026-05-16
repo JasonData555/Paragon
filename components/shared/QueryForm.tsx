@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { X } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { X, RefreshCw } from 'lucide-react';
 import { PillToggle } from '@/components/ui/PillToggle';
 import { SearchableDropdown } from '@/components/ui/SearchableDropdown';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { FunctionSelector } from '@/components/shared/FunctionSelector';
+import { INDUSTRY_LIST, REPORTING_LINE_OPTIONS, BOARD_FREQUENCY_OPTIONS } from '@/lib/constants';
 import type { QueryParams, QueryResult, RoleTier, MetroTier, CompanyStructure, SizeBucket, OperatingMode } from '@/lib/types';
 
 const ROLE_OPTIONS: { value: RoleTier; label: string }[] = [
@@ -40,10 +41,16 @@ interface QueryFormProps {
   mode: OperatingMode;
   onResult: (result: QueryResult, params: QueryParams) => void;
   onLoading: (loading: boolean) => void;
+  onAutoUpdating?: (updating: boolean) => void;
   fssDistribution?: { p25: number; p50: number; p75: number; p90: number };
 }
 
 const MIN_LOADING_MS = 600;
+
+// Debounce delays by input type
+const DEBOUNCE_DROPDOWN = 300;
+const DEBOUNCE_PILL     = 200;
+const DEBOUNCE_FUNCTION = 400;
 
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
@@ -54,12 +61,14 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
   );
 }
 
-export function QueryForm({ mode, onResult, onLoading, fssDistribution }: QueryFormProps) {
+export function QueryForm({ mode, onResult, onLoading, onAutoUpdating, fssDistribution }: QueryFormProps) {
   const [roleTier, setRoleTier] = useState<RoleTier | null>(null);
   const [industry, setIndustry] = useState<string | null>(null);
   const [companyStructure, setCompanyStructure] = useState<CompanyStructure | null>(null);
   const [sizeBucket, setSizeBucket] = useState<SizeBucket | null>(null);
   const [metroTier, setMetroTier] = useState<MetroTier | null>(null);
+  const [reportingLine, setReportingLine] = useState<string | null>(null);
+  const [boardFrequency, setBoardFrequency] = useState<string | null>(null);
   const [functions, setFunctions] = useState<string[]>([]);
 
   // Offer mode inputs
@@ -67,39 +76,40 @@ export function QueryForm({ mode, onResult, onLoading, fssDistribution }: QueryF
   const [candidateBonus, setCandidateBonus] = useState<number | null>(null);
   const [candidateEquity, setCandidateEquity] = useState<number | null>(null);
 
-  const [industries, setIndustries] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const hasResult = useRef(false);
 
-  useEffect(() => {
-    fetch('/api/config')
-      .then(r => r.json())
-      .then((data: { industries?: string[] }) => {
-        if (data.industries) setIndustries(data.industries);
-      })
-      .catch(() => {});
-  }, []);
+  // Stable ref for functions so debounce callbacks don't close over stale values
+  const functionsRef = useRef<string[]>([]);
+  functionsRef.current = functions;
+  const roleTierRef = useRef<RoleTier | null>(null);
+  roleTierRef.current = roleTier;
 
-  async function submitQuery(currentFunctions: string[]) {
-    if (!roleTier) return;
+  const buildParams = useCallback((currentFunctions: string[]): QueryParams => ({
+    role_tier: roleTierRef.current!,
+    industry: industry ?? undefined,
+    company_structure: companyStructure ?? undefined,
+    size_bucket: sizeBucket ?? undefined,
+    metro_tier: metroTier ?? undefined,
+    reporting_line: reportingLine ?? undefined,
+    board_frequency: boardFrequency ?? undefined,
+    selected_functions: currentFunctions.length > 0 ? currentFunctions : undefined,
+    candidate_base: mode === 'offer' ? (candidateBase ?? undefined) : undefined,
+    candidate_bonus: mode === 'offer' ? (candidateBonus ?? undefined) : undefined,
+    candidate_equity: mode === 'offer' ? (candidateEquity ?? undefined) : undefined,
+    mode,
+  }), [industry, companyStructure, sizeBucket, metroTier, reportingLine, boardFrequency,
+      candidateBase, candidateBonus, candidateEquity, mode]);
 
-    const params: QueryParams = {
-      role_tier: roleTier,
-      industry: industry ?? undefined,
-      company_structure: companyStructure ?? undefined,
-      size_bucket: sizeBucket ?? undefined,
-      metro_tier: metroTier ?? undefined,
-      selected_functions: currentFunctions.length > 0 ? currentFunctions : undefined,
-      candidate_base: mode === 'offer' ? (candidateBase ?? undefined) : undefined,
-      candidate_bonus: mode === 'offer' ? (candidateBonus ?? undefined) : undefined,
-      candidate_equity: mode === 'offer' ? (candidateEquity ?? undefined) : undefined,
-      mode,
-    };
+  const submitQuery = useCallback(async (currentFunctions: string[]) => {
+    if (!roleTierRef.current) return;
+    const params = buildParams(currentFunctions);
 
     setLoading(true);
     setError('');
     onLoading(true);
+    onAutoUpdating?.(false);
 
     const [res] = await Promise.all([
       fetch('/api/query', {
@@ -124,30 +134,42 @@ export function QueryForm({ mode, onResult, onLoading, fssDistribution }: QueryF
       setLoading(false);
       onLoading(false);
     }
-  }
+  }, [buildParams, onLoading, onResult, onAutoUpdating]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    submitQuery(functions);
+    submitQuery(functionsRef.current);
   }
 
-  // Auto-resubmit when functions change after the first successful query
+  // Auto-resubmit: function pill changes (400ms debounce)
   useEffect(() => {
     if (!hasResult.current || loading) return;
-    const timer = setTimeout(() => submitQuery(functions), 600);
+    onAutoUpdating?.(true);
+    const timer = setTimeout(() => submitQuery(functionsRef.current), DEBOUNCE_FUNCTION);
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [functions]);
 
-  // Auto-resubmit when other filter fields change after the first successful query
+  // Auto-resubmit: role tier / metro pill changes (200ms debounce)
   useEffect(() => {
     if (!hasResult.current || loading) return;
-    const timer = setTimeout(() => submitQuery(functions), 600);
+    onAutoUpdating?.(true);
+    const timer = setTimeout(() => submitQuery(functionsRef.current), DEBOUNCE_PILL);
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roleTier, industry, companyStructure, sizeBucket, metroTier]);
+  }, [roleTier, metroTier]);
 
-  const canSubmit = roleTier != null && !loading;
+  // Auto-resubmit: dropdown changes (300ms debounce)
+  useEffect(() => {
+    if (!hasResult.current || loading) return;
+    onAutoUpdating?.(true);
+    const timer = setTimeout(() => submitQuery(functionsRef.current), DEBOUNCE_DROPDOWN);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [industry, companyStructure, sizeBucket, reportingLine, boardFrequency]);
+
+  const hasRoleTier = roleTier != null;
+  const canSubmit = hasRoleTier && !loading;
 
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -186,7 +208,7 @@ export function QueryForm({ mode, onResult, onLoading, fssDistribution }: QueryF
         <div style={{ marginBottom: 20 }}>
           <SearchableDropdown
             label="Industry"
-            options={industries}
+            options={[...INDUSTRY_LIST]}
             value={industry}
             onChange={setIndustry}
             placeholder="Any industry"
@@ -216,7 +238,7 @@ export function QueryForm({ mode, onResult, onLoading, fssDistribution }: QueryF
         </div>
 
         {/* 5. Metro Tier */}
-        <div style={{ marginBottom: mode === 'offer' ? 0 : 0 }}>
+        <div style={{ marginBottom: 20 }}>
           <FieldLabel>Metro Tier</FieldLabel>
           <PillToggle
             options={METRO_OPTIONS}
@@ -225,7 +247,29 @@ export function QueryForm({ mode, onResult, onLoading, fssDistribution }: QueryF
           />
         </div>
 
-        {/* Offer mode — Candidate Compensation inputs (after Metro Tier) */}
+        {/* 6. Reports To (RCI input) */}
+        <div style={{ marginBottom: 20 }}>
+          <SearchableDropdown
+            label="Reports To"
+            options={[...REPORTING_LINE_OPTIONS]}
+            value={reportingLine}
+            onChange={setReportingLine}
+            placeholder="Any reporting line"
+          />
+        </div>
+
+        {/* 7. Board Access (RCI input) */}
+        <div style={{ marginBottom: mode === 'offer' ? 0 : 0 }}>
+          <SearchableDropdown
+            label="Board Access"
+            options={[...BOARD_FREQUENCY_OPTIONS]}
+            value={boardFrequency}
+            onChange={setBoardFrequency}
+            placeholder="Any frequency"
+          />
+        </div>
+
+        {/* Offer mode — Candidate Compensation inputs */}
         {mode === 'offer' && (
           <>
             <div style={{ height: 1, backgroundColor: '#D3D1C7', margin: '20px 0' }} />
@@ -255,7 +299,7 @@ export function QueryForm({ mode, onResult, onLoading, fssDistribution }: QueryF
           </>
         )}
 
-        {/* Hairline divider between sections */}
+        {/* Hairline divider */}
         <div style={{ height: 1, backgroundColor: '#D3D1C7', margin: '24px 0' }} />
 
         {/* SECTION 2: FUNCTIONAL SCOPE */}
@@ -310,18 +354,18 @@ export function QueryForm({ mode, onResult, onLoading, fssDistribution }: QueryF
 
         <button
           type="submit"
-          disabled={!canSubmit}
+          disabled={!hasRoleTier}
           style={{
             width: '100%',
             height: 48,
             borderRadius: 12,
-            backgroundColor: loading ? '#0F6E56' : '#0F6E56',
+            backgroundColor: '#0F6E56',
             color: '#FFFFFF',
             fontSize: 15,
             fontWeight: 500,
             border: 'none',
-            cursor: canSubmit ? 'pointer' : 'not-allowed',
-            opacity: !canSubmit && !loading ? 0.5 : loading ? 0.8 : 1,
+            cursor: hasRoleTier ? 'pointer' : 'not-allowed',
+            opacity: !hasRoleTier ? 0.5 : loading ? 0.8 : 1,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -329,7 +373,7 @@ export function QueryForm({ mode, onResult, onLoading, fssDistribution }: QueryF
             transition: 'background-color 150ms',
           }}
           onMouseEnter={e => {
-            if (canSubmit && !loading) (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#0A5240';
+            if (hasRoleTier && !loading) (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#0A5240';
           }}
           onMouseLeave={e => {
             (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#0F6E56';
@@ -349,6 +393,11 @@ export function QueryForm({ mode, onResult, onLoading, fssDistribution }: QueryF
                 <path d="M21 12a9 9 0 1 1-6.219-8.56" />
               </svg>
               Generating...
+            </>
+          ) : hasResult.current ? (
+            <>
+              <RefreshCw size={15} />
+              Refresh Brief
             </>
           ) : (
             'Generate Brief →'
