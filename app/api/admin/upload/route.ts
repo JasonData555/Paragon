@@ -295,6 +295,7 @@ function transformRows(rows: Record<string, unknown>[], _headers: string[]): Sur
       board_no_access: safeBool(row['board_no_access']),
       repeat_ciso: safeBool(row['repeat_ciso']),
       first_time_ciso: safeBool(row['first_time_ciso']),
+      role_classification: 'Security Program Leader' as const,
     });
   }
 

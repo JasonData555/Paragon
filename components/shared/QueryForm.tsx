@@ -7,11 +7,26 @@ import { SearchableDropdown } from '@/components/ui/SearchableDropdown';
 import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { FunctionSelector } from '@/components/shared/FunctionSelector';
 import { INDUSTRY_LIST, REPORTING_LINE_OPTIONS, BOARD_FREQUENCY_OPTIONS } from '@/lib/constants';
-import type { QueryParams, QueryResult, RoleTier, MetroTier, CompanyStructure, SizeBucket, OperatingMode } from '@/lib/types';
+import type { QueryParams, QueryResult, RoleTier, MetroTier, CompanyStructure, SizeBucket, OperatingMode, RoleClassification } from '@/lib/types';
 
-const ROLE_OPTIONS: { value: RoleTier; label: string }[] = [
+type LeaderType = 'All' | 'Program Leaders' | 'NextGen';
+
+const LEADER_TYPE_OPTIONS: { value: LeaderType; label: string }[] = [
+  { value: 'All', label: 'All' },
+  { value: 'Program Leaders', label: 'Program Leaders' },
+  { value: 'NextGen', label: 'NextGen' },
+];
+
+const PROGRAM_LEADER_ROLE_OPTIONS: { value: RoleTier; label: string }[] = [
   { value: 'CISO', label: 'CISO' },
   { value: 'VP Security', label: 'VP Security' },
+  { value: 'Director', label: 'Director' },
+  { value: 'Manager', label: 'Manager' },
+];
+
+const NEXTGEN_ROLE_OPTIONS: { value: RoleTier; label: string }[] = [
+  { value: 'Deputy CISO', label: 'Deputy CISO' },
+  { value: 'Head of Security', label: 'Head of Security' },
   { value: 'Director', label: 'Director' },
   { value: 'Manager', label: 'Manager' },
 ];
@@ -62,6 +77,7 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
 }
 
 export function QueryForm({ mode, onResult, onLoading, onAutoUpdating, fssDistribution }: QueryFormProps) {
+  const [leaderType, setLeaderType] = useState<LeaderType>('All');
   const [roleTier, setRoleTier] = useState<RoleTier | null>(null);
   const [industry, setIndustry] = useState<string | null>(null);
   const [companyStructure, setCompanyStructure] = useState<CompanyStructure | null>(null);
@@ -80,26 +96,47 @@ export function QueryForm({ mode, onResult, onLoading, onAutoUpdating, fssDistri
   const [error, setError] = useState('');
   const hasResult = useRef(false);
 
-  // Stable ref for functions so debounce callbacks don't close over stale values
+  // Effective role options depend on leader type
+  const effectiveRoleOptions = leaderType === 'NextGen' ? NEXTGEN_ROLE_OPTIONS : PROGRAM_LEADER_ROLE_OPTIONS;
+
+  // Clear role tier when leader type changes if the current selection isn't in the new option set
+  useEffect(() => {
+    if (roleTier && !effectiveRoleOptions.some(o => o.value === roleTier)) {
+      setRoleTier(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leaderType]);
+
+  // Stable refs for debounce callbacks
   const functionsRef = useRef<string[]>([]);
   functionsRef.current = functions;
   const roleTierRef = useRef<RoleTier | null>(null);
   roleTierRef.current = roleTier;
+  const leaderTypeRef = useRef<LeaderType>('All');
+  leaderTypeRef.current = leaderType;
 
-  const buildParams = useCallback((currentFunctions: string[]): QueryParams => ({
-    role_tier: roleTierRef.current!,
-    industry: industry ?? undefined,
-    company_structure: companyStructure ?? undefined,
-    size_bucket: sizeBucket ?? undefined,
-    metro_tier: metroTier ?? undefined,
-    reporting_line: reportingLine ?? undefined,
-    board_frequency: boardFrequency ?? undefined,
-    selected_functions: currentFunctions.length > 0 ? currentFunctions : undefined,
-    candidate_base: mode === 'offer' ? (candidateBase ?? undefined) : undefined,
-    candidate_bonus: mode === 'offer' ? (candidateBonus ?? undefined) : undefined,
-    candidate_equity: mode === 'offer' ? (candidateEquity ?? undefined) : undefined,
-    mode,
-  }), [industry, companyStructure, sizeBucket, metroTier, reportingLine, boardFrequency,
+  const buildParams = useCallback((currentFunctions: string[]): QueryParams => {
+    const rc = leaderTypeRef.current;
+    const role_classification: RoleClassification | undefined =
+      rc === 'Program Leaders' ? 'Security Program Leader' :
+      rc === 'NextGen'         ? 'NextGen Security Leader' : undefined;
+
+    return {
+      role_tier: roleTierRef.current!,
+      industry: industry ?? undefined,
+      company_structure: companyStructure ?? undefined,
+      size_bucket: sizeBucket ?? undefined,
+      metro_tier: metroTier ?? undefined,
+      reporting_line: reportingLine ?? undefined,
+      board_frequency: boardFrequency ?? undefined,
+      selected_functions: currentFunctions.length > 0 ? currentFunctions : undefined,
+      candidate_base: mode === 'offer' ? (candidateBase ?? undefined) : undefined,
+      candidate_bonus: mode === 'offer' ? (candidateBonus ?? undefined) : undefined,
+      candidate_equity: mode === 'offer' ? (candidateEquity ?? undefined) : undefined,
+      mode,
+      ...(role_classification ? { role_classification } : {}),
+    };
+  }, [industry, companyStructure, sizeBucket, metroTier, reportingLine, boardFrequency,
       candidateBase, candidateBonus, candidateEquity, mode]);
 
   const submitQuery = useCallback(async (currentFunctions: string[]) => {
@@ -150,14 +187,14 @@ export function QueryForm({ mode, onResult, onLoading, onAutoUpdating, fssDistri
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [functions]);
 
-  // Auto-resubmit: role tier / metro pill changes (200ms debounce)
+  // Auto-resubmit: role tier / metro / leader type pill changes (200ms debounce)
   useEffect(() => {
     if (!hasResult.current || loading) return;
     onAutoUpdating?.(true);
     const timer = setTimeout(() => submitQuery(functionsRef.current), DEBOUNCE_PILL);
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roleTier, metroTier]);
+  }, [roleTier, metroTier, leaderType]);
 
   // Auto-resubmit: dropdown changes (300ms debounce)
   useEffect(() => {
@@ -193,11 +230,21 @@ export function QueryForm({ mode, onResult, onLoading, onAutoUpdating, fssDistri
           Primary Profile
         </div>
 
+        {/* 0. Leader Type */}
+        <div style={{ marginBottom: 20 }}>
+          <FieldLabel>Leader Type</FieldLabel>
+          <PillToggle
+            options={LEADER_TYPE_OPTIONS}
+            value={leaderType}
+            onChange={setLeaderType}
+          />
+        </div>
+
         {/* 1. Role Tier */}
         <div style={{ marginBottom: 20 }}>
           <FieldLabel required>Role Tier</FieldLabel>
           <PillToggle
-            options={ROLE_OPTIONS}
+            options={effectiveRoleOptions}
             value={roleTier}
             onChange={setRoleTier}
             required

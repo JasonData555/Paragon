@@ -184,17 +184,20 @@ export function PISCoordinateChart({ pis, candidate, mode }: PISCoordinateChartP
           <rect x={PAD_L} y={PAD_T} width={PLOT_W} height={PLOT_H}
             fill="none" stroke="#D3D1C7" strokeWidth={1} />
 
-          {/* Peer dots */}
-          {peer_points.map((p, i) => (
-            <circle
-              key={i}
-              cx={toChartX(p.fss)}
-              cy={toChartY(p.rci)}
-              r={3}
-              fill="#D3D1C7"
-              fillOpacity={0.6}
-            />
-          ))}
+          {/* Peer dots — colored by population when both are present */}
+          {peer_points.map((p, i) => {
+            const isNextGen = p.role_classification === 'NextGen Security Leader';
+            return (
+              <circle
+                key={i}
+                cx={toChartX(p.fss)}
+                cy={toChartY(p.rci)}
+                r={isNextGen ? 2.5 : 3}
+                fill={isNextGen ? '#B8E8D8' : '#D3D1C7'}
+                fillOpacity={0.6}
+              />
+            );
+          })}
 
           {/* Crosshairs at peer medians */}
           <line x1={crossX} y1={PAD_T} x2={crossX} y2={PAD_T + PLOT_H}
@@ -270,21 +273,43 @@ export function PISCoordinateChart({ pis, candidate, mode }: PISCoordinateChartP
       </div>
 
       {/* Axis labels + legend row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-        <div style={{ display: 'flex', gap: 16 }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#5F5E5A' }}>
-            <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: '#0F6E56', border: '2px solid #FFFFFF', boxShadow: '0 0 0 1px #0F6E56' }} />
-            This role
-          </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#5F5E5A' }}>
-            <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: '#D3D1C7' }} />
-            Peer ({peer_points.length} records)
-          </span>
-        </div>
-        <span style={{ fontSize: 11, color: '#888780' }}>
-          Crosshairs = peer medians
-        </span>
-      </div>
+      {(() => {
+        const hasProgram = peer_points.some(p => (p.role_classification ?? 'Security Program Leader') !== 'NextGen Security Leader');
+        const hasNextGen = peer_points.some(p => p.role_classification === 'NextGen Security Leader');
+        const showPopLegend = hasProgram && hasNextGen;
+        const programCount = peer_points.filter(p => (p.role_classification ?? 'Security Program Leader') !== 'NextGen Security Leader').length;
+        const nextgenCount = peer_points.filter(p => p.role_classification === 'NextGen Security Leader').length;
+        return (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#5F5E5A' }}>
+                <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: '#0F6E56', border: '2px solid #FFFFFF', boxShadow: '0 0 0 1px #0F6E56' }} />
+                This role
+              </span>
+              {showPopLegend ? (
+                <>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#5F5E5A' }}>
+                    <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: '#D3D1C7' }} />
+                    Program Leaders (<span className="font-mono">{programCount}</span>)
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#5F5E5A' }}>
+                    <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: '#B8E8D8' }} />
+                    NextGen (<span className="font-mono">{nextgenCount}</span>)
+                  </span>
+                </>
+              ) : (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#5F5E5A' }}>
+                  <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: hasNextGen ? '#B8E8D8' : '#D3D1C7' }} />
+                  {hasNextGen ? 'NextGen' : 'Program Leaders'} (<span className="font-mono">{peer_points.length}</span> records)
+                </span>
+              )}
+            </div>
+            <span style={{ fontSize: 11, color: '#888780' }}>
+              Crosshairs = peer medians
+            </span>
+          </div>
+        );
+      })()}
     </div>
   );
 }

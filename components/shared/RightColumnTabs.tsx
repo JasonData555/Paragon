@@ -121,6 +121,8 @@ function OverviewTab({ result, params, mode, onGovernanceClick }: {
   }
   const tooltipText = `Results based on ${result.weighted_n.toFixed(0)} weighted records from ${result.raw_n} matched responses. Records weighted by recency: past 12 months carry full weight, declining linearly to 0.60 at 24 months. Data older than 24 months excluded.`;
 
+  const showPopSplit = result.program_leader_n > 0 && result.nextgen_n > 0;
+
   return (
     <div className="flex flex-col" style={{ minHeight: '100%' }}>
       <div className="mb-5" style={{
@@ -142,6 +144,11 @@ function OverviewTab({ result, params, mode, onGovernanceClick }: {
             Candidate at {candidatePct}th percentile of matched peers
           </span>
         )}
+        {showPopSplit && (
+          <p className="text-paragon-text-muted mt-2" style={{ fontSize: 13, fontStyle: 'italic' }}>
+            Results include both security program leaders and NextGen leaders. Select a Leader Type above to isolate a specific population.
+          </p>
+        )}
       </div>
 
       <GovernanceSnapshotCard result={result} onGovernanceClick={onGovernanceClick} />
@@ -157,6 +164,11 @@ function OverviewTab({ result, params, mode, onGovernanceClick }: {
           <span className="opacity-70 font-normal">
             {result.weighted_n.toFixed(0)} wtd / {result.raw_n} total
           </span>
+          {showPopSplit && (
+            <span className="opacity-60 font-normal ml-1">
+              — <span className="font-mono">{result.program_leader_n}</span> Program Leaders / <span className="font-mono">{result.nextgen_n}</span> NextGen
+            </span>
+          )}
         </span>
         <div className="relative flex-1 text-center"
           onMouseEnter={() => setShowTooltip(true)}
@@ -331,6 +343,8 @@ export function RightColumnTabs({ result, params, loading, mode, isAutoUpdating 
               confidence={result.confidence}
               governanceLayer={governanceLayer}
               activeGovernanceCount={activeGovernanceProtections.length}
+              nextgenBands={result.nextgen_comp_bands}
+              nextgenN={result.nextgen_n}
             />
           </div>
         )}

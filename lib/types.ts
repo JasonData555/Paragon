@@ -1,4 +1,5 @@
-export type RoleTier = 'CISO' | 'VP Security' | 'Director' | 'Manager';
+export type RoleTier = 'CISO' | 'VP Security' | 'Director' | 'Manager' | 'Head of Security' | 'Deputy CISO';
+export type RoleClassification = 'Security Program Leader' | 'NextGen Security Leader';
 export type MetroTier = 'T1' | 'T2' | 'T3';
 export type CompanyStructure = 'Publicly Traded' | 'Privately Held' | 'PE-Backed' | 'Non-Profit' | 'Government';
 export type SizeBucket = 'Small' | 'Mid-Market' | 'Large' | 'Enterprise';
@@ -42,6 +43,7 @@ export interface SurveyRecord {
   board_no_access: boolean;
   repeat_ciso: boolean;
   first_time_ciso: boolean;
+  role_classification: RoleClassification;
 }
 
 export interface WeightedRecord extends SurveyRecord {
@@ -62,6 +64,7 @@ export interface RCIProfile {
 export interface PeerPISPoint {
   fss: number;
   rci: number;
+  role_classification?: RoleClassification;
 }
 
 export interface PISResult {
@@ -100,6 +103,7 @@ export interface QueryParams {
   candidate_bonus?: number;
   candidate_equity?: number;
   mode: OperatingMode;
+  role_classification?: RoleClassification | 'All';
 }
 
 export interface PercentileBand {
@@ -191,6 +195,7 @@ export interface AppliedFilters {
   company_structure: CompanyStructure | null;
   size_bucket: SizeBucket | null;
   metro_tier: MetroTier | 'All' | null;
+  role_classification: RoleClassification | 'All' | null;
 }
 
 export interface CandidatePosition {
@@ -213,6 +218,9 @@ export interface QueryResult {
   profile_comp: CompBands;
   benchmark_n: number;
   profile_n: number;
+  program_leader_n: number;
+  nextgen_n: number;
+  nextgen_comp_bands: CompBands | null;
   governance: GovernanceResult;
   org_structure: OrgStructureResult;
   fss: FSSResult | null;

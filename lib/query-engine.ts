@@ -42,7 +42,7 @@ import type {
 // ---------------------------------------------------------------------------
 // Filtering
 // ---------------------------------------------------------------------------
-type FilterKey = 'role_tier' | 'industry' | 'company_structure' | 'size_bucket' | 'metro_tier';
+type FilterKey = 'role_classification' | 'role_tier' | 'industry' | 'company_structure' | 'size_bucket' | 'metro_tier';
 
 function filterRecords(
   records: WeightedRecord[],
@@ -50,6 +50,15 @@ function filterRecords(
   excludeFilters: FilterKey[] = [],
 ): WeightedRecord[] {
   return records.filter(r => {
+    // role_classification is a hard population boundary — applied first, never relaxed
+    if (
+      !excludeFilters.includes('role_classification') &&
+      params.role_classification &&
+      params.role_classification !== 'All'
+    ) {
+      if ((r.role_classification ?? 'Security Program Leader') !== params.role_classification) return false;
+    }
+
     if (!excludeFilters.includes('role_tier') && r.role_tier !== params.role_tier) return false;
 
     if (!excludeFilters.includes('industry') && params.industry && params.industry !== '') {
@@ -407,12 +416,21 @@ export function executeQuery(params: QueryParams): QueryResult {
       ? calcFSS(filtered, params.selected_functions)
       : null;
 
+  // Population split counts
+  const program_leader_n = filtered.filter(r => (r.role_classification ?? 'Security Program Leader') === 'Security Program Leader').length;
+  const nextgen_n = filtered.filter(r => r.role_classification === 'NextGen Security Leader').length;
+
+  // NextGen-only comp bands (only when >= 5 records to prevent noise)
+  const nextgenFiltered = filtered.filter(r => r.role_classification === 'NextGen Security Leader');
+  const nextgen_comp_bands = nextgenFiltered.length >= 5 ? calcCompBands(nextgenFiltered) : null;
+
   // PIS — compute per-record FSS and RCI for peer scatter, then score current profile
   let pis: PISResult | null = null;
   {
     const peerPoints: PeerPISPoint[] = filtered.map(r => ({
       fss: calcRecordFSS(r),
       rci: calcRecordRCI(r),
+      role_classification: r.role_classification ?? 'Security Program Leader',
     }));
 
     const peerFSSScores = peerPoints.map(p => p.fss);
@@ -484,6 +502,7 @@ export function executeQuery(params: QueryParams): QueryResult {
     company_structure: params.company_structure ?? null,
     size_bucket: params.size_bucket ?? null,
     metro_tier: params.metro_tier ?? null,
+    role_classification: params.role_classification ?? null,
   };
 
   // Statement
@@ -507,6 +526,9 @@ export function executeQuery(params: QueryParams): QueryResult {
     profile_comp,
     benchmark_n,
     profile_n,
+    program_leader_n,
+    nextgen_n,
+    nextgen_comp_bands,
     governance,
     org_structure,
     fss,

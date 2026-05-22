@@ -25,6 +25,7 @@ export const FSS_DIMINISHING_RETURNS_FACTOR = 0.5;
 // Filter application order (relaxation reverses this)
 // ---------------------------------------------------------------------------
 export const FILTER_PRIORITY = [
+  'role_classification',
   'role_tier',
   'industry',
   'company_structure',
@@ -123,7 +124,7 @@ export const SIZE_BUCKET_BENCHMARKS: Record<SizeBucket, { n: number; base_p50: n
 // ---------------------------------------------------------------------------
 // Filter option lists
 // ---------------------------------------------------------------------------
-export const ROLE_TIER_OPTIONS: RoleTier[] = ['CISO', 'VP Security', 'Director', 'Manager'];
+export const ROLE_TIER_OPTIONS: RoleTier[] = ['CISO', 'VP Security', 'Director', 'Manager', 'Head of Security', 'Deputy CISO'];
 
 export const COMPANY_STRUCTURE_OPTIONS: CompanyStructure[] = [
   'Publicly Traded',

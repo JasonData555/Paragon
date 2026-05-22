@@ -14,6 +14,8 @@ interface CompDistributionCardProps {
   confidence?: ConfidenceLevel;
   governanceLayer?: PercentileBand | null;
   activeGovernanceCount?: number;
+  nextgenBands?: CompBands | null;
+  nextgenN?: number;
 }
 
 const METRICS = [
@@ -48,6 +50,8 @@ export function CompDistributionCard({
   confidence,
   governanceLayer,
   activeGovernanceCount = 0,
+  nextgenBands,
+  nextgenN,
 }: CompDistributionCardProps) {
   const [tableExpanded, setTableExpanded] = useState(false);
 
@@ -65,6 +69,12 @@ export function CompDistributionCard({
             <span className="inline-block w-3 h-3 rounded-sm" style={{ background: 'linear-gradient(to bottom, #0F6E56 50%, #5DCAA5 50%)' }} />
             Your Profile (n=<span className="font-mono">{profileN}</span>)
           </span>
+          {nextgenBands && (nextgenN ?? 0) >= 5 && (
+            <span className="flex items-center gap-1.5 text-xs" style={{ color: '#5DCAA5' }}>
+              <span className="inline-block w-3 h-2.5" style={{ border: '1.5px dashed #5DCAA5', borderRadius: 2 }} />
+              NextGen (n=<span className="font-mono">{nextgenN}</span>)
+            </span>
+          )}
         </div>
       </div>
 
@@ -77,6 +87,8 @@ export function CompDistributionCard({
         confidence={confidence}
         governanceLayer={governanceLayer}
         activeGovernanceCount={activeGovernanceCount}
+        nextgenBands={nextgenBands}
+        nextgenN={nextgenN}
       />
 
       {/* Details toggle */}

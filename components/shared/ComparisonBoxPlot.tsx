@@ -11,6 +11,8 @@ interface ComparisonBoxPlotProps {
   confidence?: ConfidenceLevel;
   governanceLayer?: PercentileBand | null;
   activeGovernanceCount?: number;
+  nextgenBands?: CompBands | null;
+  nextgenN?: number;
 }
 
 const METRICS = [
@@ -42,6 +44,7 @@ const PLOT_H = SVG_H - AXIS_BOTTOM - AXIS_TOP;
 const BENCH_W = 30;
 const PROF_W = 18;
 const GOV_W = 14;
+const NEXTGEN_W = 12;
 const BOX_OFFSET = 14;
 const TICK_H = 7;
 
@@ -68,6 +71,8 @@ export function ComparisonBoxPlot({
   confidence = 'HIGH',
   governanceLayer,
   activeGovernanceCount = 0,
+  nextgenBands,
+  nextgenN,
 }: ComparisonBoxPlotProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgWidth = useContainerWidth(containerRef);
@@ -112,6 +117,8 @@ export function ComparisonBoxPlot({
 
   const plotW = svgWidth - AXIS_LEFT - AXIS_RIGHT;
 
+  const showNextGenLayer = !!nextgenBands && (nextgenN ?? 0) >= 5;
+
   const allValues: number[] = [];
   for (const b of [benchmark, profile]) {
     for (const m of METRICS) {
@@ -122,6 +129,11 @@ export function ComparisonBoxPlot({
   if (candidate) allValues.push(candidate.total_comp);
   if (governanceLayer && activeGovernanceCount > 0) {
     allValues.push(governanceLayer.p10, governanceLayer.p90);
+  }
+  if (showNextGenLayer && nextgenBands) {
+    for (const m of METRICS) {
+      allValues.push(nextgenBands[m.key].p10, nextgenBands[m.key].p90);
+    }
   }
   const globalMin = Math.max(0, Math.min(...allValues) * 0.90);
   const globalMax = Math.max(...allValues) * 1.04;
@@ -229,6 +241,32 @@ export function ComparisonBoxPlot({
         <line x1={x1} y1={yP50} x2={x1 + bw} y2={yP50} stroke="#0F6E56" strokeWidth={2} />
         <line x1={cx} y1={yP25} x2={cx} y2={yP10} stroke="#0F6E56" strokeWidth={1} />
         <line x1={cx - capW} y1={yP10} x2={cx + capW} y2={yP10} stroke="#0F6E56" strokeWidth={1} />
+      </g>
+    );
+  }
+
+  function renderNextGenBox(band: BandData, cx: number) {
+    const bw = NEXTGEN_W;
+    const x1 = cx - bw / 2;
+    const yP10 = yPx(band.p10);
+    const yP25 = yPx(band.p25);
+    const yP50 = yPx(band.p50);
+    const yP75 = yPx(band.p75);
+    const yP90 = yPx(band.p90);
+    const capW = 3;
+
+    return (
+      <g>
+        <line x1={cx} y1={yP75} x2={cx} y2={yP90} stroke="#5DCAA5" strokeWidth={1} />
+        <line x1={cx - capW} y1={yP90} x2={cx + capW} y2={yP90} stroke="#5DCAA5" strokeWidth={1} />
+        <rect x={x1} y={yP75} width={bw} height={Math.max(1, yP50 - yP75)}
+          fill="transparent" stroke="#5DCAA5" strokeWidth={1.5} strokeDasharray="3,2" />
+        <rect x={x1} y={yP50} width={bw} height={Math.max(1, yP25 - yP50)}
+          fill="transparent" stroke="#5DCAA5" strokeWidth={1.5} strokeDasharray="3,2" />
+        {/* Solid median line */}
+        <line x1={x1} y1={yP50} x2={x1 + bw} y2={yP50} stroke="#5DCAA5" strokeWidth={2} />
+        <line x1={cx} y1={yP25} x2={cx} y2={yP10} stroke="#5DCAA5" strokeWidth={1} />
+        <line x1={cx - capW} y1={yP10} x2={cx + capW} y2={yP10} stroke="#5DCAA5" strokeWidth={1} />
       </g>
     );
   }
@@ -369,6 +407,18 @@ export function ComparisonBoxPlot({
                   </g>
                 )}
 
+                {/* Layer 4: NextGen population */}
+                {showNextGenLayer && nextgenBands && (
+                  <g style={{ cursor: 'pointer' }}
+                    onMouseMove={e => handleBoxHover(e, m.key, nextgenBands[m.key], `NextGen (n=${nextgenN ?? 0})`, '#5DCAA5')}
+                    onMouseLeave={() => setTooltip(null)}>
+                    {renderNextGenBox(
+                      nextgenBands[m.key],
+                      cx + BOX_OFFSET + PROF_W + (showGovLayer && isTotalComp ? GOV_W + 4 : 4),
+                    )}
+                  </g>
+                )}
+
                 {/* X-axis label */}
                 <text x={cx} y={SVG_H - 6} textAnchor="middle"
                   style={{ fontSize: '10px', fill: '#5F5E5A', letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: 'var(--font-inter)' }}>
@@ -395,13 +445,21 @@ export function ComparisonBoxPlot({
         </svg>
       )}
 
-      {/* Legend entry for Layer 3 */}
-      {showGovLayer && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 11, color: '#5F5E5A' }}>
-          <span style={{ display: 'inline-block', width: 12, height: 12, border: '2px dashed #0F6E56', borderRadius: 2 }} />
-          With selection (n=<span className="font-mono">{governanceLayer?.sample_n ?? 0}</span>)
-        </div>
-      )}
+      {/* Legend entries for Layer 3 and Layer 4 */}
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 4 }}>
+        {showGovLayer && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#5F5E5A' }}>
+            <span style={{ display: 'inline-block', width: 12, height: 12, border: '2px dashed #0F6E56', borderRadius: 2 }} />
+            With selection (n=<span className="font-mono">{governanceLayer?.sample_n ?? 0}</span>)
+          </div>
+        )}
+        {showNextGenLayer && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#5F5E5A' }}>
+            <span style={{ display: 'inline-block', width: 12, height: 10, border: '1.5px dashed #5DCAA5', borderRadius: 2 }} />
+            NextGen (n=<span className="font-mono">{nextgenN ?? 0}</span>)
+          </div>
+        )}
+      </div>
 
       {/* Divergence callout */}
       {showDivergence && !isInsufficient && (
