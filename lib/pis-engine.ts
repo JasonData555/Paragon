@@ -123,6 +123,8 @@ export function buildPISResult(
   peerRCIMedian: number,
   pisPercentile: number,
   peerPoints: PeerPISPoint[],
+  allPeerPoints: PeerPISPoint[],
+  totalMarketN: number,
 ): PISResult {
   return {
     fss,
@@ -133,6 +135,8 @@ export function buildPISResult(
     quadrant_peer_rci_median: peerRCIMedian,
     pis_percentile: pisPercentile,
     peer_points: peerPoints,
+    all_peer_points: allPeerPoints,
+    total_market_n: totalMarketN,
   };
 }
 

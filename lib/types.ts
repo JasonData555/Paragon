@@ -76,6 +76,8 @@ export interface PISResult {
   quadrant_peer_rci_median: number;
   pis_percentile: number;
   peer_points: PeerPISPoint[];
+  all_peer_points: PeerPISPoint[];  // full dataset — used for ghost dots when matched n < 30
+  total_market_n: number;           // total dataset size for header context line
 }
 
 export interface GovernanceCombinationResult {

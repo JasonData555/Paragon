@@ -427,6 +427,14 @@ export function executeQuery(params: QueryParams): QueryResult {
   // PIS — compute per-record FSS and RCI for peer scatter, then score current profile
   let pis: PISResult | null = null;
   {
+    // Full-dataset peer points (for ghost dots when matched n < 30)
+    const allPeerPoints: PeerPISPoint[] = allWeighted.map(r => ({
+      fss: calcRecordFSS(r),
+      rci: calcRecordRCI(r),
+      role_classification: r.role_classification ?? 'Security Program Leader',
+    }));
+    const totalMarketN = allWeighted.length;
+
     const peerPoints: PeerPISPoint[] = filtered.map(r => ({
       fss: calcRecordFSS(r),
       rci: calcRecordRCI(r),
@@ -462,12 +470,14 @@ export function executeQuery(params: QueryParams): QueryResult {
       pis = buildPISResult(
         roleFSS, roleRCI, rolePIS, quadrant,
         peerFSSMedian, peerRCIMedian, pisPercentile, peerPoints,
+        allPeerPoints, totalMarketN,
       );
     } else if (peerPoints.length > 0) {
       // No current-role params but we still want peer cloud for the chart
       pis = buildPISResult(
         0, calcRCI(null, null, null, null), 0, 'Generalist',
         peerFSSMedian, peerRCIMedian, 0, peerPoints,
+        allPeerPoints, totalMarketN,
       );
     }
   }
