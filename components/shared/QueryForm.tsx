@@ -4,10 +4,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, RefreshCw } from 'lucide-react';
 import { PillToggle } from '@/components/ui/PillToggle';
 import { SearchableDropdown } from '@/components/ui/SearchableDropdown';
-import { CurrencyInput } from '@/components/ui/CurrencyInput';
 import { FunctionSelector } from '@/components/shared/FunctionSelector';
 import { INDUSTRY_LIST, REPORTING_LINE_OPTIONS, BOARD_FREQUENCY_OPTIONS } from '@/lib/constants';
-import type { QueryParams, QueryResult, RoleTier, MetroTier, CompanyStructure, SizeBucket, OperatingMode, RoleClassification } from '@/lib/types';
+import type { QueryParams, QueryResult, RoleTier, MetroTier, CompanyStructure, SizeBucket, RoleClassification } from '@/lib/types';
 
 type LeaderType = 'All' | 'Program Leaders' | 'NextGen';
 
@@ -53,7 +52,6 @@ const SIZE_OPTIONS: { value: SizeBucket; label: string }[] = [
 ];
 
 interface QueryFormProps {
-  mode: OperatingMode;
   onResult: (result: QueryResult, params: QueryParams) => void;
   onLoading: (loading: boolean) => void;
   onAutoUpdating?: (updating: boolean) => void;
@@ -76,7 +74,7 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
   );
 }
 
-export function QueryForm({ mode, onResult, onLoading, onAutoUpdating, fssDistribution }: QueryFormProps) {
+export function QueryForm({ onResult, onLoading, onAutoUpdating, fssDistribution }: QueryFormProps) {
   const [leaderType, setLeaderType] = useState<LeaderType>('All');
   const [roleTier, setRoleTier] = useState<RoleTier | null>(null);
   const [industry, setIndustry] = useState<string | null>(null);
@@ -86,11 +84,6 @@ export function QueryForm({ mode, onResult, onLoading, onAutoUpdating, fssDistri
   const [reportingLine, setReportingLine] = useState<string | null>(null);
   const [boardFrequency, setBoardFrequency] = useState<string | null>(null);
   const [functions, setFunctions] = useState<string[]>([]);
-
-  // Offer mode inputs
-  const [candidateBase, setCandidateBase] = useState<number | null>(null);
-  const [candidateBonus, setCandidateBonus] = useState<number | null>(null);
-  const [candidateEquity, setCandidateEquity] = useState<number | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -130,14 +123,9 @@ export function QueryForm({ mode, onResult, onLoading, onAutoUpdating, fssDistri
       reporting_line: reportingLine ?? undefined,
       board_frequency: boardFrequency ?? undefined,
       selected_functions: currentFunctions.length > 0 ? currentFunctions : undefined,
-      candidate_base: mode === 'offer' ? (candidateBase ?? undefined) : undefined,
-      candidate_bonus: mode === 'offer' ? (candidateBonus ?? undefined) : undefined,
-      candidate_equity: mode === 'offer' ? (candidateEquity ?? undefined) : undefined,
-      mode,
       ...(role_classification ? { role_classification } : {}),
     };
-  }, [industry, companyStructure, sizeBucket, metroTier, reportingLine, boardFrequency,
-      candidateBase, candidateBonus, candidateEquity, mode]);
+  }, [industry, companyStructure, sizeBucket, metroTier, reportingLine, boardFrequency]);
 
   const submitQuery = useCallback(async (currentFunctions: string[]) => {
     if (!roleTierRef.current) return;
@@ -213,12 +201,10 @@ export function QueryForm({ mode, onResult, onLoading, onAutoUpdating, fssDistri
       {/* Page title and subtitle */}
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ fontSize: 24, fontWeight: 500, color: '#2C2C2A', marginBottom: 6 }}>
-          {mode === 'intake' ? 'Intake Brief' : 'Offer Brief'}
+          Intake Brief
         </h1>
         <p style={{ fontSize: 14, color: '#5F5E5A', lineHeight: 1.6 }}>
-          {mode === 'intake'
-            ? 'Generate real-time compensation and governance intelligence for a candidate profile'
-            : 'Position a compensation package against the peer distribution'}
+          Generate real-time compensation and governance intelligence for a candidate profile
         </p>
       </div>
 
@@ -306,7 +292,7 @@ export function QueryForm({ mode, onResult, onLoading, onAutoUpdating, fssDistri
         </div>
 
         {/* 7. Board Access (RCI input) */}
-        <div style={{ marginBottom: mode === 'offer' ? 0 : 0 }}>
+        <div>
           <SearchableDropdown
             label="Board Access"
             options={[...BOARD_FREQUENCY_OPTIONS]}
@@ -315,36 +301,6 @@ export function QueryForm({ mode, onResult, onLoading, onAutoUpdating, fssDistri
             placeholder="Any frequency"
           />
         </div>
-
-        {/* Offer mode — Candidate Compensation inputs */}
-        {mode === 'offer' && (
-          <>
-            <div style={{ height: 1, backgroundColor: '#D3D1C7', margin: '20px 0' }} />
-            <div className="label-caps text-paragon-text-secondary" style={{ marginBottom: 12 }}>
-              Candidate Compensation
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-              <CurrencyInput
-                label="Annual Base"
-                value={candidateBase}
-                onChange={setCandidateBase}
-                placeholder="$300,000"
-              />
-              <CurrencyInput
-                label="Annual Bonus"
-                value={candidateBonus}
-                onChange={setCandidateBonus}
-                placeholder="$0"
-              />
-              <CurrencyInput
-                label="Annual Equity — RSU"
-                value={candidateEquity}
-                onChange={setCandidateEquity}
-                placeholder="$0"
-              />
-            </div>
-          </>
-        )}
 
         {/* Hairline divider */}
         <div style={{ height: 1, backgroundColor: '#D3D1C7', margin: '24px 0' }} />

@@ -1,6 +1,6 @@
 import { getDatasetStats } from '@/lib/data-loader';
 import Link from 'next/link';
-import { BarChart2, Search, TrendingUp } from 'lucide-react';
+import { BarChart2, Search } from 'lucide-react';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -56,24 +56,6 @@ export default async function DashboardPage() {
           </p>
           <div className="mt-4 text-xs text-paragon-accent-primary group-hover:text-paragon-accent-hover transition-colors">
             Open Intake →
-          </div>
-        </Link>
-
-        <Link
-          href="/offer"
-          className="card p-6 hover:scale-[1.01] transition-transform duration-150 group"
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-sm bg-paragon-accent-primary/10 flex items-center justify-center">
-              <TrendingUp size={18} className="text-paragon-accent-primary" />
-            </div>
-            <h2 className="text-sm font-medium text-paragon-text-primary">Offer Analysis</h2>
-          </div>
-          <p className="text-xs text-paragon-text-muted leading-relaxed">
-            Position a specific compensation package within the peer distribution. Overlay candidate TC against weighted percentile bands.
-          </p>
-          <div className="mt-4 text-xs text-paragon-accent-primary group-hover:text-paragon-accent-hover transition-colors">
-            Open Offer Analysis →
           </div>
         </Link>
       </div>

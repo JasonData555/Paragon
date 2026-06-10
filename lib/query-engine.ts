@@ -370,20 +370,6 @@ function buildFSSJustification(
 }
 
 // ---------------------------------------------------------------------------
-// Candidate position (offer mode)
-// ---------------------------------------------------------------------------
-function calcCandidatePercentile(value: number, records: WeightedRecord[], field: 'total_comp' | 'base_salary'): number {
-  const values = records.map(r => {
-    if (field === 'base_salary') return r.base_salary ?? 0;
-    return (r.base_salary ?? 0) + (r.bonus ?? 0) + (r.equity ?? 0);
-  });
-  const weights = records.map(r => r.recency_weight);
-  const totalW = weights.reduce((s, w) => s + w, 0);
-  const belowW = values.reduce((s, v, i) => s + (v < value ? weights[i] : 0), 0);
-  return totalW > 0 ? Math.round((belowW / totalW) * 100) : 50;
-}
-
-// ---------------------------------------------------------------------------
 // Main query entry point
 // ---------------------------------------------------------------------------
 export function executeQuery(params: QueryParams): QueryResult {
@@ -485,26 +471,6 @@ export function executeQuery(params: QueryParams): QueryResult {
   // Governance combination matrix (all 15 non-empty subsets)
   const governance_matrix = precomputeGovernanceMatrix(filtered);
 
-  // Candidate position (offer mode)
-  const candidate = params.mode === 'offer' &&
-    (params.candidate_base || params.candidate_bonus || params.candidate_equity)
-    ? (() => {
-        const base = params.candidate_base ?? 0;
-        const bonus = params.candidate_bonus ?? 0;
-        const equity = params.candidate_equity ?? 0;
-        const total_comp = base + bonus + equity;
-        return {
-          base_value: base,
-          bonus_value: bonus,
-          equity_value: equity,
-          total_cash: base + bonus,
-          total_comp,
-          base_percentile: base > 0 ? calcCandidatePercentile(base, filtered, 'base_salary') : null,
-          total_comp_percentile: total_comp > 0 ? calcCandidatePercentile(total_comp, filtered, 'total_comp') : null,
-        };
-      })()
-    : null;
-
   // Filters applied
   const filters_applied: AppliedFilters = {
     role_tier: params.role_tier,
@@ -517,11 +483,9 @@ export function executeQuery(params: QueryParams): QueryResult {
 
   // Statement
   const statement = generateStatement({
-    mode: params.mode,
     comp_bands,
     governance,
     fss,
-    candidate,
     filters_applied,
     confidence,
   });
@@ -545,7 +509,6 @@ export function executeQuery(params: QueryParams): QueryResult {
     pis,
     governance_matrix,
     statement,
-    candidate,
     filters_applied,
     query_params: params,
   };

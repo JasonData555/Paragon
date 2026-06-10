@@ -1,13 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef, useId } from 'react';
-import type { CompBands, CandidatePosition, ConfidenceLevel, OperatingMode, PercentileBand } from '@/lib/types';
+import type { CompBands, ConfidenceLevel, PercentileBand } from '@/lib/types';
 
 interface ComparisonBoxPlotProps {
   benchmark: CompBands;
   profile: CompBands;
-  candidate?: CandidatePosition | null;
-  mode: OperatingMode;
   confidence?: ConfidenceLevel;
   governanceLayer?: PercentileBand | null;
   activeGovernanceCount?: number;
@@ -66,8 +64,6 @@ function useContainerWidth(ref: React.RefObject<HTMLDivElement | null>) {
 export function ComparisonBoxPlot({
   benchmark,
   profile,
-  candidate,
-  mode,
   confidence = 'HIGH',
   governanceLayer,
   activeGovernanceCount = 0,
@@ -77,8 +73,6 @@ export function ComparisonBoxPlot({
   const containerRef = useRef<HTMLDivElement>(null);
   const svgWidth = useContainerWidth(containerRef);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; content: React.ReactNode } | null>(null);
-  const [needleProgress, setNeedleProgress] = useState(0);
-  const needleAnimRef = useRef<number | null>(null);
   const patternId = useId().replace(/:/g, '');
 
   // Profile transition opacity (fades to 0.6 when profile changes, back to 1.0 after animation)
@@ -92,29 +86,6 @@ export function ComparisonBoxPlot({
     return () => clearTimeout(t);
   }, [profile]);
 
-  // Needle animation (offer mode)
-  useEffect(() => {
-    if (mode !== 'offer' || !candidate?.total_comp_percentile) {
-      setNeedleProgress(0);
-      return;
-    }
-    const start = performance.now();
-    const duration = 300;
-    function step(now: number) {
-      const t = Math.min((now - start) / duration, 1);
-      const ease = 1 - Math.pow(1 - t, 3);
-      setNeedleProgress(ease);
-      if (t < 1) needleAnimRef.current = requestAnimationFrame(step);
-    }
-    const timer = setTimeout(() => {
-      needleAnimRef.current = requestAnimationFrame(step);
-    }, 200);
-    return () => {
-      clearTimeout(timer);
-      if (needleAnimRef.current) cancelAnimationFrame(needleAnimRef.current);
-    };
-  }, [mode, candidate?.total_comp_percentile]);
-
   const plotW = svgWidth - AXIS_LEFT - AXIS_RIGHT;
 
   const showNextGenLayer = !!nextgenBands && (nextgenN ?? 0) >= 5;
@@ -126,7 +97,6 @@ export function ComparisonBoxPlot({
       allValues.push(band.p10, band.p90);
     }
   }
-  if (candidate) allValues.push(candidate.total_comp);
   if (governanceLayer && activeGovernanceCount > 0) {
     allValues.push(governanceLayer.p10, governanceLayer.p90);
   }
@@ -276,7 +246,6 @@ export function ComparisonBoxPlot({
   const tcProfile = profile.total_comp;
   const divergencePct = tcBench.p50 > 0 ? ((tcProfile.p50 - tcBench.p50) / tcBench.p50) * 100 : 0;
   const showDivergence = Math.abs(divergencePct) > 15;
-  const needleY = mode === 'offer' && candidate ? yPx(candidate.total_comp) : 0;
   const showGovLayer = activeGovernanceCount > 0 && governanceLayer != null;
 
   function handleBoxHover(e: React.MouseEvent<SVGGElement>, _k: MetricKey, band: BandData, label: string, color: string) {
@@ -428,20 +397,6 @@ export function ComparisonBoxPlot({
             );
           })}
 
-          {/* Candidate needle (offer mode) */}
-          {mode === 'offer' && candidate && needleProgress > 0 && (
-            <g>
-              <line
-                x1={AXIS_LEFT} y1={needleY}
-                x2={AXIS_LEFT + (svgWidth - AXIS_LEFT - AXIS_RIGHT) * needleProgress} y2={needleY}
-                stroke="#F59E0B" strokeWidth={2} strokeDasharray="6,3"
-              />
-              <text x={AXIS_LEFT + 4} y={needleY - 4}
-                style={{ fontSize: '10px', fill: '#F59E0B', fontFamily: 'var(--font-jetbrains-mono)' }}>
-                Candidate
-              </text>
-            </g>
-          )}
         </svg>
       )}
 

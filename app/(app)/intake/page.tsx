@@ -39,7 +39,6 @@ export default function IntakePage() {
         }}
       >
         <QueryForm
-          mode="intake"
           onResult={(r, p) => { setResult(r); setParams(p); }}
           onLoading={setLoading}
           onAutoUpdating={setIsAutoUpdating}
@@ -65,7 +64,6 @@ export default function IntakePage() {
           params={params}
           loading={loading}
           isAutoUpdating={isAutoUpdating}
-          mode="intake"
         />
       </div>
     </div>

@@ -1,12 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import type { CandidatePosition, OperatingMode, PISResult, QuadrantLabel } from '@/lib/types';
+import type { PISResult, QuadrantLabel } from '@/lib/types';
 
 interface PISCoordinateChartProps {
   pis: PISResult;
-  candidate?: CandidatePosition | null;
-  mode: OperatingMode;
 }
 
 const CHART_W = 400;
@@ -61,7 +59,7 @@ const QUADRANT_TC_MEDIAN: Record<QuadrantLabel, string> = {
 
 function fmt1(v: number) { return v.toFixed(1); }
 
-export function PISCoordinateChart({ pis, candidate, mode }: PISCoordinateChartProps) {
+export function PISCoordinateChart({ pis }: PISCoordinateChartProps) {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; content: React.ReactNode } | null>(null);
 
   const {
@@ -393,28 +391,6 @@ export function PISCoordinateChart({ pis, candidate, mode }: PISCoordinateChartP
           >
             ← Narrow role          Broad role →
           </text>
-
-          {/* Candidate dot (offer mode) — unchanged */}
-          {mode === 'offer' && candidate && (
-            <g>
-              <circle
-                cx={toChartX(fss)}
-                cy={toChartY(rci.rci_score)}
-                r={8}
-                fill="#F59E0B"
-                stroke="#FFFFFF"
-                strokeWidth={2}
-              />
-              <text
-                x={toChartX(fss)}
-                y={toChartY(rci.rci_score) - 12}
-                textAnchor="middle"
-                style={{ fontSize: 10, fill: '#F59E0B', fontFamily: 'var(--font-jetbrains-mono)' }}
-              >
-                Candidate
-              </text>
-            </g>
-          )}
 
           {/* Current role marker — target style: outer ring + inner dot, animated */}
           <g

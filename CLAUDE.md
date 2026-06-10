@@ -4,9 +4,10 @@
 
 Paragon is a proprietary compensation and governance intelligence platform built on a survey dataset owned by **Hitch Partners**. It is used live by Brett Starr and Michael Piacente in client calls (PE partners, CHROs) to generate branded intelligence briefs in seconds.
 
-**Two operating modes:**
+**Operating mode:**
 - **Intake** (`/intake`) — calibrate comp expectations before a search begins
-- **Offer** (`/offer`) — position a specific candidate package against the peer distribution
+
+> **Offer mode was removed** (June 2026). Package-vs-peer positioning now lives in **Aegis** (`../Aegis`), the consumer-facing personal scorecard product, as its Prospective/Compare modes. The calculation logic is shared; Aegis renames it to the Traction framework at the product layer.
 
 **Admin is Jason only** — Brett and Michael have no admin access.
 
@@ -60,7 +61,6 @@ app/
     dashboard/page.tsx          Server component — needs own max-w-6xl container
     coverage/page.tsx           Server component — needs own max-w-6xl container
     intake/page.tsx             Client — two-column fixed layout (480px left + flex-1 right)
-    offer/page.tsx              Client — same structure as intake, mode="offer"
   admin/
     page.tsx                    Login page (unprotected)
     dashboard/page.tsx          Dataset overview (protected)
@@ -84,14 +84,14 @@ components/
     ScopeStabilityGauge.tsx     FSS zone-colored gauge (replaces old progress bar)
     RightColumnTabs.tsx         Three-tab right column (Overview/Compensation/Governance)
     CompDistributionCard.tsx    Compensation tab — box plot + dual sub-row table
-    ComparisonBoxPlot.tsx       SVG box plot (benchmark vs profile, offer needle)
+    ComparisonBoxPlot.tsx       SVG box plot (benchmark vs profile)
     GovernanceDeltaPanel.tsx    Governance tab — toggle rows WITH/WITHOUT/PREMIUM
     GovernanceDisplay.tsx       Deprecated — kept, not rendered
     CompBandDisplay.tsx         Deprecated — kept, not rendered
-    Sidebar.tsx                 64px fixed nav (5 icons, hover tooltips)
+    Sidebar.tsx                 64px fixed nav (4 icons, hover tooltips)
     OrgDisplay.tsx              Org structure card
     FSSCard.tsx                 FSS intelligence card
-    StatementDisplay.tsx        Calibration/competitive statement
+    StatementDisplay.tsx        Calibration statement
     ConfidenceIndicator.tsx     HIGH/MEDIUM/LOW/INSUFFICIENT chip
     ExportButton.tsx            PDF export trigger
   ui/
@@ -145,7 +145,7 @@ lib/
 - Section labels: `.label-caps` class (11px, `#5F5E5A`, 0.06em tracking)
 - Cards: 12px radius (`rounded-card`), `shadow-card`, 150ms transitions
 
-### Layout Pattern (intake/offer pages)
+### Layout Pattern (intake page)
 ```
 Page background: #F5F0E8
 ├── Left column (flex: 0 0 480px, overflow-y: auto)  — white card
@@ -173,7 +173,6 @@ QueryResult {
   org_structure: OrgStructureResult
   fss: FSSResult | null          // null if no functions selected
   statement: string
-  candidate: CandidatePosition | null  // offer mode only
   filters_applied: AppliedFilters
   query_params: QueryParams
 }
@@ -277,7 +276,6 @@ The functions field uses comma-separated quoted strings. `"AI Governance, Risk M
 | Output sections | `fade-in-up` — 200ms ease-out, translateY 8px |
 | Skeleton cards | `skeleton-pulse` — 1.5s ease-in-out |
 | Scope gauge fill | `300ms ease-out` on score change |
-| Offer needle | Slides from left, 300ms cubic ease-out after 200ms delay |
 | Stat numbers | Count-up 600ms on render |
 | Button press | `scale(0.98)` |
 | Card hover | `scale(1.01)` |

@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     /* eslint-enable */
 
     const dateStr = new Date().toISOString().split('T')[0];
-    const filename = `paragon_${params.mode}_${dateStr}.pdf`;
+    const filename = `paragon_intake_${dateStr}.pdf`;
 
     return new Response(new Uint8Array(buffer), {
       headers: {

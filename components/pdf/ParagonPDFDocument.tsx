@@ -85,18 +85,11 @@ interface PDFProps {
   generatedDate: string;
 }
 
-export function ParagonPDFDocument({ result, params, recipientName, generatedDate }: PDFProps) {
+export function ParagonPDFDocument({ result, recipientName, generatedDate }: PDFProps) {
   const dateStr = new Date(generatedDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  const { comp_bands, governance, org_structure, fss, candidate, confidence, raw_n, weighted_n, statement } = result;
+  const { comp_bands, governance, org_structure, fss, confidence, raw_n, weighted_n, statement } = result;
 
-  const borderStyle = (() => {
-    if (params.mode === 'intake') return s.tealBorder;
-    const pct = candidate?.total_comp_percentile ?? 50;
-    if (pct >= 75) return s.greenBorder;
-    if (pct >= 50) return s.tealBorder;
-    if (pct >= 25) return s.warnBorder;
-    return s.dangerBorder;
-  })();
+  const borderStyle = s.tealBorder;
 
   const confidenceColor = confidence === 'HIGH' ? SUCCESS : confidence === 'MEDIUM' ? WARN : DANGER;
 
@@ -113,7 +106,7 @@ export function ParagonPDFDocument({ result, params, recipientName, generatedDat
             <Text style={s.metaText}>{dateStr}</Text>
             <Text style={s.metaText}>Prepared exclusively for {recipientName}</Text>
             <Text style={[s.metaText, { marginTop: 4 }]}>
-              {params.mode === 'intake' ? 'Intake Calibration' : 'Offer Assessment'}
+              Intake Calibration
             </Text>
           </View>
         </View>
@@ -121,7 +114,7 @@ export function ParagonPDFDocument({ result, params, recipientName, generatedDat
         {/* Confidence + Statement */}
         <View style={[s.card, { marginBottom: 16 }]}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-            <Text style={s.cardTitle}>{params.mode === 'intake' ? 'Market Calibration' : 'Competitive Assessment'}</Text>
+            <Text style={s.cardTitle}>Market Calibration</Text>
             <View style={[s.confidenceBadge, { backgroundColor: confidenceColor }]}>
               <Text style={{ fontSize: 8, color: '#fff', fontWeight: 500 }}>{confidence}  n={raw_n} (eff. {weighted_n})</Text>
             </View>
@@ -154,15 +147,6 @@ export function ParagonPDFDocument({ result, params, recipientName, generatedDat
               <Text style={s.tableCell}>{fmt(b.p90)}</Text>
             </View>
           ))}
-          {candidate && (
-            <View style={[s.tableRow, { backgroundColor: '#FEF3C7', marginTop: 4 }]}>
-              <Text style={[s.tableCellBold, { color: '#92400E' }]}>Candidate</Text>
-              <Text style={s.tableCell}></Text>
-              <Text style={[s.tableCell, { fontWeight: 500, color: '#92400E' }]}>{fmt(candidate.base_value)}</Text>
-              <Text style={s.tableCell}>{candidate.base_percentile != null ? `${candidate.base_percentile}th pct` : ''}</Text>
-              <Text style={s.tableCell}>{candidate.total_comp_percentile != null ? `TC: ${candidate.total_comp_percentile}th pct` : ''}</Text>
-            </View>
-          )}
         </View>
 
         {/* Governance + Org side by side */}

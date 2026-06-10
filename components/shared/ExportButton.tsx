@@ -2,15 +2,14 @@
 
 import { useState, useRef } from 'react';
 import { Download, FileText } from 'lucide-react';
-import type { QueryResult, QueryParams, OperatingMode } from '@/lib/types';
+import type { QueryResult, QueryParams } from '@/lib/types';
 
 interface ExportButtonProps {
   result: QueryResult;
   params: QueryParams;
-  mode: OperatingMode;
 }
 
-export function ExportButton({ result, params, mode }: ExportButtonProps) {
+export function ExportButton({ result, params }: ExportButtonProps) {
   const [showInput, setShowInput] = useState(false);
   const [recipientName, setRecipientName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,7 +40,7 @@ export function ExportButton({ result, params, mode }: ExportButtonProps) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `paragon_${mode}_${new Date().toISOString().split('T')[0]}.pdf`;
+      a.download = `paragon_intake_${new Date().toISOString().split('T')[0]}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       setShowInput(false);

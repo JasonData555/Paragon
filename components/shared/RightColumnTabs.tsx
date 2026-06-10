@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { BarChart2 } from 'lucide-react';
-import type { QueryResult, QueryParams, OperatingMode, ConfidenceLevel, PercentileBand, ProtectionKey } from '@/lib/types';
+import type { QueryResult, QueryParams, ConfidenceLevel, PercentileBand, ProtectionKey } from '@/lib/types';
 import { CompDistributionCard } from './CompDistributionCard';
 import { GovernanceDeltaPanel } from './GovernanceDeltaPanel';
 import { OrgDisplay } from './OrgDisplay';
@@ -14,7 +14,6 @@ interface RightColumnTabsProps {
   result: QueryResult | null;
   params: QueryParams | null;
   loading: boolean;
-  mode: OperatingMode;
   isAutoUpdating?: boolean;
 }
 
@@ -98,27 +97,16 @@ function GovernanceSnapshotCard({ result, onGovernanceClick }: { result: QueryRe
   );
 }
 
-function OverviewTab({ result, params, mode, onGovernanceClick }: {
-  result: QueryResult; params: QueryParams; mode: OperatingMode; onGovernanceClick: () => void;
+function OverviewTab({ result, params, onGovernanceClick }: {
+  result: QueryResult; params: QueryParams; onGovernanceClick: () => void;
 }) {
   const [showTooltip, setShowTooltip] = useState(false);
-  const candidatePct = result.candidate?.total_comp_percentile ?? null;
-  let caliBorderColor = '#0F6E56';
-  if (mode === 'offer' && candidatePct != null) {
-    if (candidatePct < 25) caliBorderColor = '#DC2626';
-    else if (candidatePct < 50) caliBorderColor = '#F59E0B';
-    else caliBorderColor = '#0F6E56';
-  }
+  const caliBorderColor = '#0F6E56';
   const filterParts: string[] = [];
   if (params.industry) filterParts.push(params.industry);
   if (params.company_structure) filterParts.push(params.company_structure);
   if (params.size_bucket) filterParts.push(params.size_bucket);
   const peerDesc = filterParts.length > 0 ? filterParts.join(' · ') : 'matched';
-  let percBg = '#E1F5EE', percColor = '#0F6E56';
-  if (mode === 'offer' && candidatePct != null) {
-    if (candidatePct < 25) { percBg = '#FEE2E2'; percColor = '#991B1B'; }
-    else if (candidatePct < 50) { percBg = '#FEF3C7'; percColor = '#92400E'; }
-  }
   const tooltipText = `Results based on ${result.weighted_n.toFixed(0)} weighted records from ${result.raw_n} matched responses. Records weighted by recency: past 12 months carry full weight, declining linearly to 0.60 at 24 months. Data older than 24 months excluded.`;
 
   const showPopSplit = result.program_leader_n > 0 && result.nextgen_n > 0;
@@ -130,7 +118,7 @@ function OverviewTab({ result, params, mode, onGovernanceClick }: {
         padding: '28px 24px', boxShadow: '0 1px 3px 0 rgba(0,0,0,0.08)', backgroundColor: '#FFFFFF',
       }}>
         <div className="label-caps mb-3" style={{ color: caliBorderColor, letterSpacing: '0.08em' }}>
-          {mode === 'intake' ? 'Market Calibration' : 'Offer Assessment'}
+          Market Calibration
         </div>
         <p className="text-paragon-text-primary" style={{ fontSize: 20, fontWeight: 500, lineHeight: 1.6 }}>
           {result.statement}
@@ -138,12 +126,6 @@ function OverviewTab({ result, params, mode, onGovernanceClick }: {
         <p className="text-paragon-text-secondary mt-3" style={{ fontSize: 13 }}>
           Based on <span className="font-mono">{result.raw_n}</span> {peerDesc} peers
         </p>
-        {mode === 'offer' && candidatePct != null && (
-          <span className="inline-block mt-2 font-mono rounded"
-            style={{ backgroundColor: percBg, color: percColor, fontSize: 12, padding: '2px 10px', borderRadius: 8 }}>
-            Candidate at {candidatePct}th percentile of matched peers
-          </span>
-        )}
         {showPopSplit && (
           <p className="text-paragon-text-muted mt-2" style={{ fontSize: 13, fontStyle: 'italic' }}>
             Results include both security program leaders and NextGen leaders. Select a Leader Type above to isolate a specific population.
@@ -202,7 +184,7 @@ function EmptyState() {
   );
 }
 
-export function RightColumnTabs({ result, params, loading, mode, isAutoUpdating = false }: RightColumnTabsProps) {
+export function RightColumnTabs({ result, params, loading, isAutoUpdating = false }: RightColumnTabsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [activeGovernanceProtections, setActiveGovernanceProtections] = useState<ProtectionKey[]>([]);
 
@@ -315,14 +297,14 @@ export function RightColumnTabs({ result, params, loading, mode, isAutoUpdating 
         {!loading && !result && <EmptyState />}
 
         {!loading && result && params && activeTab === 'overview' && (
-          <OverviewTab result={result} params={params} mode={mode} onGovernanceClick={() => setActiveTab('governance')} />
+          <OverviewTab result={result} params={params} onGovernanceClick={() => setActiveTab('governance')} />
         )}
 
         {!loading && result && activeTab === 'compensation' && (
           <div>
             {/* PIS Coordinate Chart — first if pis data is available */}
             {result.pis && (
-              <PISCoordinateChart pis={result.pis} candidate={result.candidate} mode={mode} />
+              <PISCoordinateChart pis={result.pis} />
             )}
 
             {result.fss && params && params.selected_functions && params.selected_functions.length > 0 && (
@@ -336,8 +318,6 @@ export function RightColumnTabs({ result, params, loading, mode, isAutoUpdating 
             <CompDistributionCard
               benchmark={result.benchmark_comp ?? result.comp_bands}
               profile={result.profile_comp ?? result.comp_bands}
-              candidate={result.candidate}
-              mode={mode}
               profileN={result.profile_n ?? result.raw_n}
               benchmarkN={result.benchmark_n ?? result.raw_n}
               confidence={result.confidence}
@@ -352,7 +332,6 @@ export function RightColumnTabs({ result, params, loading, mode, isAutoUpdating 
         {!loading && result && activeTab === 'governance' && (
           <GovernanceDeltaPanel
             governance={result.governance}
-            mode={mode}
             governanceMatrix={result.governance_matrix}
             rciScore={result.pis?.rci?.rci_score}
             onGovernanceSelectionChange={setActiveGovernanceProtections}
@@ -366,7 +345,7 @@ export function RightColumnTabs({ result, params, loading, mode, isAutoUpdating 
           flexShrink: 0, borderTop: '1px solid #D3D1C7',
           padding: '12px 24px', backgroundColor: '#FFFFFF',
         }}>
-          <ExportButton result={result} params={params} mode={mode} />
+          <ExportButton result={result} params={params} />
         </div>
       )}
 

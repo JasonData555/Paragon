@@ -2,13 +2,11 @@
 
 import { useState } from 'react';
 import { ComparisonBoxPlot } from './ComparisonBoxPlot';
-import type { CompBands, CandidatePosition, ConfidenceLevel, OperatingMode, PercentileBand } from '@/lib/types';
+import type { CompBands, ConfidenceLevel, PercentileBand } from '@/lib/types';
 
 interface CompDistributionCardProps {
   benchmark: CompBands;
   profile: CompBands;
-  candidate?: CandidatePosition | null;
-  mode: OperatingMode;
   profileN: number;
   benchmarkN: number;
   confidence?: ConfidenceLevel;
@@ -34,17 +32,9 @@ function fmt(v: number): string {
   return `$${v}`;
 }
 
-function candidateIndicator(value: number, band: { p25: number; p75: number }) {
-  if (value > band.p75) return { symbol: '↑', color: '#0F6E56' };
-  if (value < band.p25) return { symbol: '↓', color: '#DC2626' };
-  return { symbol: '', color: '#2C2C2A' };
-}
-
 export function CompDistributionCard({
   benchmark,
   profile,
-  candidate,
-  mode,
   profileN,
   benchmarkN,
   confidence,
@@ -82,8 +72,6 @@ export function CompDistributionCard({
       <ComparisonBoxPlot
         benchmark={benchmark}
         profile={profile}
-        candidate={candidate}
-        mode={mode}
         confidence={confidence}
         governanceLayer={governanceLayer}
         activeGovernanceCount={activeGovernanceCount}
@@ -156,30 +144,6 @@ export function CompDistributionCard({
             );
           })}
 
-          {/* Candidate row (offer mode) */}
-          {mode === 'offer' && candidate && (
-            <div className="flex items-center py-1.5" style={{ backgroundColor: '#FEF3C7' }}>
-              <span className="w-28 text-xs uppercase tracking-wide font-medium flex-shrink-0" style={{ color: '#92400E' }}>
-                Candidate
-              </span>
-              <div className="flex-1 flex justify-end gap-3">
-                {[candidate.base_value, candidate.bonus_value, candidate.equity_value, candidate.total_cash, candidate.total_comp].map((v, j) => {
-                  const metricKey = METRICS[j]?.key;
-                  const pBand = metricKey ? profile[metricKey] : null;
-                  const { symbol, color } = pBand ? candidateIndicator(v, pBand) : { symbol: '', color: '#2C2C2A' };
-                  return (
-                    <span
-                      key={j}
-                      className="font-mono text-xs w-14 text-right"
-                      style={{ color }}
-                    >
-                      {symbol} {fmt(v)}
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
       </div>}
     </div>

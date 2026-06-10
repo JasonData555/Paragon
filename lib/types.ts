@@ -5,7 +5,6 @@ export type CompanyStructure = 'Publicly Traded' | 'Privately Held' | 'PE-Backed
 export type SizeBucket = 'Small' | 'Mid-Market' | 'Large' | 'Enterprise';
 export type ConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW' | 'INSUFFICIENT';
 export type FSSLabel = 'Narrow' | 'Standard' | 'Broad' | 'Expansive';
-export type OperatingMode = 'intake' | 'offer';
 export type QuadrantLabel = 'Paragon Leader' | 'Utility Player' | 'Specialist Surgeon' | 'Generalist';
 export type ProtectionKey = 'do' | 'indemnification' | 'severance' | 'accel_vest';
 
@@ -101,10 +100,6 @@ export interface QueryParams {
   selected_functions?: string[];
   reporting_line?: string;
   board_frequency?: string;
-  candidate_base?: number;
-  candidate_bonus?: number;
-  candidate_equity?: number;
-  mode: OperatingMode;
   role_classification?: RoleClassification | 'All';
 }
 
@@ -200,16 +195,6 @@ export interface AppliedFilters {
   role_classification: RoleClassification | 'All' | null;
 }
 
-export interface CandidatePosition {
-  base_percentile: number | null;
-  total_comp_percentile: number | null;
-  base_value: number;
-  bonus_value: number;
-  equity_value: number;
-  total_cash: number;
-  total_comp: number;
-}
-
 export interface QueryResult {
   confidence: ConfidenceLevel;
   raw_n: number;
@@ -229,7 +214,6 @@ export interface QueryResult {
   pis: PISResult | null;
   governance_matrix: Record<string, GovernanceCombinationResult>;
   statement: string;
-  candidate: CandidatePosition | null;
   filters_applied: AppliedFilters;
   query_params: QueryParams;
 }

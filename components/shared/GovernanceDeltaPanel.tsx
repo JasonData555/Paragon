@@ -2,11 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Shield, AlertTriangle } from 'lucide-react';
-import type { GovernanceCombinationResult, GovernanceResult, OperatingMode, ProtectionKey } from '@/lib/types';
+import type { GovernanceCombinationResult, GovernanceResult, ProtectionKey } from '@/lib/types';
 
 interface GovernanceDeltaPanelProps {
   governance: GovernanceResult;
-  mode: OperatingMode;
   governanceMatrix?: Record<string, GovernanceCombinationResult>;
   rciScore?: number;
   onGovernanceSelectionChange?: (selected: ProtectionKey[]) => void;
@@ -223,7 +222,6 @@ function CombinationPanel({
 
 export function GovernanceDeltaPanel({
   governance,
-  mode,
   governanceMatrix = {},
   rciScore,
   onGovernanceSelectionChange,
